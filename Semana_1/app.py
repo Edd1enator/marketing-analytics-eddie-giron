@@ -10,7 +10,7 @@ gasto = st.slider("Seleccione nivel de gasto en publicidad", 10, 200, 50)
 
 variable_x = np.array([[10], [20], [30], [40], [50]])
 variable_y = np.array([15,25, 35, 45, 55])
-modelo_lr = LinnearRegression()
+modelo_lr = LinearRegression()
 
 modelo_lr.fit(variable_x, variable_y)
 
