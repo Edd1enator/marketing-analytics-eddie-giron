@@ -31,11 +31,11 @@ def carpeta_datos():
 
 @st.cache_data
 def cargar():
-    d = carpeta_datos()
-    catalogo = pd.read_csv(d / "catalogo.csv")
-    hist = pd.read_csv(d / "ordenes_historial.csv")
-    hold = pd.read_csv(d / "ordenes_holdout.csv")
-    exp = pd.read_csv(d / "experimento.csv")
+    path = carpeta_datos()
+    catalogo = pd.read_csv(path / "catalogo.csv")
+    hist = pd.read_csv(path / "ordenes_historial.csv")
+    hold = pd.read_csv(path / "ordenes_holdout.csv")
+    exp = pd.read_csv(path / "experimento.csv")
     clientes = pd.read_csv(d / "clientes.csv")
     productos = list(catalogo["item"])
     M = (pd.crosstab(hist["customer_id"], hist["item"]) > 0).astype(int).reindex(
@@ -54,10 +54,10 @@ COL_AGUA = productos.index("Agua")
 popularidad = X.sum(axis=0)
 
 
-# TODO 1 (resuelto): similitud producto × producto, con la diagonal en 0, calculada UNA vez
+# TODO 1: la tabla de similitudes producto × producto (con la diagonal en 0), calculada UNA vez
 @st.cache_data
 def tabla_similitud_items(_X):
-    S = cosine_similarity(_X.T)          # 29 × 29: columnas = productos
+    S = cosine_similarity(_X.T)
     np.fill_diagonal(S, 0)
     return S
 
@@ -69,7 +69,7 @@ def vecinos_de(x_vec, K, excluir=None):
     """Índices de los K clientes más parecidos a x_vec, con sus similitudes."""
     sims = cosine_similarity(x_vec[None, :], X)[0]
     if excluir is not None:
-        sims[excluir] = -1                 # el cliente no es su propio vecino
+        sims[excluir] = -1
     idx = np.argsort(-sims)[:K]
     return idx, sims[idx]
 
@@ -79,16 +79,17 @@ def puntajes(metodo, x_vec, K, excluir=None):
     if metodo == "Popularidad":
         return popularidad.astype(float)
     if metodo == "Filtrado por ítem":
-        # TODO 2 (resuelto): suma de similitudes de cada producto con lo que el cliente ya compró
+        # TODO 2: suma de las similitudes de cada producto con lo que el cliente ya compró
         return S_it @ x_vec
-    # TODO 3 (resuelto): filtrado por cliente -> K vecinos y suma de sus compras ponderada por similitud
+    # TODO 3: filtrado por cliente: similitud del cliente con TODOS los demás, sus K vecinos más parecidos
+    #         y la suma de sus compras ponderada por esa similitud
     idx, sims = vecinos_de(x_vec, K, excluir)
     return sims @ X[idx]
 
 
 def top3(scores, x_vec):
-    s = np.where(x_vec > 0, -np.inf, scores).astype(float)   # no recomendar lo ya comprado
-    s[COL_AGUA] = -np.inf                                     # ni el Agua
+    s = np.where(x_vec > 0, -np.inf, scores).astype(float)
+    s[COL_AGUA] = -np.inf
     return np.argsort(-s)[:3]
 
 
@@ -121,7 +122,7 @@ def evaluar(K, n_clientes, semilla=42):
             S = Xs @ S_it.T
         else:
             sims = cosine_similarity(Xs, X)
-            sims[np.arange(len(filas)), filas] = -1            # excluirse a sí mismo
+            sims[np.arange(len(filas)), filas] = -1
             vec = np.argpartition(-sims, K - 1, axis=1)[:, :K]
             W = np.zeros_like(sims)
             np.put_along_axis(W, vec, np.take_along_axis(sims, vec, axis=1), axis=1)
@@ -132,16 +133,18 @@ def evaluar(K, n_clientes, semilla=42):
         aciertos = np.take_along_axis(NUEVO[filas], recs, axis=1).sum(axis=1) > 0
         resultados[metodo] = {
             "Hit rate@3": aciertos.mean(),
-            "Cobertura": len(np.unique(recs)) / (len(productos) - 1),   # sin contar el Agua
+            "Cobertura": len(np.unique(recs)) / (len(productos) - 1),
         }
     return pd.DataFrame(resultados).T, len(filas), len(elegibles)
 
 
 # --- Título ---
 st.title("☕ Recomendador de productos")
-st.caption("Esta app ayuda a marketing a decidir qué 3 productos mostrar a cada cliente en el carrusel "
-           "“Para ti” y con qué método de recomendación, comparando qué tan seguido aciertan.")
+st.caption("Esta app ayuda a decidir 3 productos mostrar a cada cliente en el carrusel "
+           "y con qué método de recomendación, comparando qué tan seguido aciertan.")
 
+# TODO 4: barra lateral con los controles interactivos (mínimo UNO): un selector del método
+#         (st.selectbox) y un slider con el número de vecinos K (st.slider)
 with st.sidebar:
     st.header("Parámetros")
     metodo = st.selectbox("Método de recomendación", METODOS, index=1)
@@ -161,8 +164,13 @@ with tab1:
     x_vec = X[fila].copy()
     comprados = [productos[j] for j in np.where(x_vec > 0)[0]]
     st.write("Ya compró:", comprados if comprados else "nada antes del corte")
+    
+ # TODO 5: muestren las 3 recomendaciones con su puntaje y, para cada una, el "porque"
+    #         - por ítem: "porque compró X (similitud 0.87)"
+    #         - por cliente: "N de sus K vecinos más parecidos lo compraron"
+    #         - popularidad: "es de lo más comprado"
+    #         (y qué hacen con un cliente SIN historial: los métodos colaborativos dan puntaje 0)    metodo_usado = metodo
 
-    metodo_usado = metodo
     if x_vec.sum() == 0 and metodo != "Popularidad":
         st.warning("Este cliente no tiene historial: los métodos colaborativos dan puntaje 0. "
                    "Se usa Popularidad como respaldo (arranque en frío).")
@@ -180,6 +188,10 @@ with tab1:
             st.caption(texto[0].upper() + texto[1:])
 
 with tab2:
+    # TODO 6: tabla de comparación (hit rate@3 y cobertura de cada método) calculada sobre los clientes del grupo
+    #         CONTROL que probaron algo nuevo (NUEVO.sum(axis=1) > 0 y es_control), con al menos un control
+    #         interactivo (por ejemplo, un slider con cuántos clientes evaluar o el K del filtrado por cliente).
+    #         Pista: es la misma lógica de hit_rate_at_k del notebook.
     n_elegibles = int(((NUEVO.sum(axis=1) > 0) & es_control).sum())
     n_eval = st.slider("Clientes del grupo control a evaluar", 100, max(n_elegibles, 101),
                        min(1000, n_elegibles), step=50)
