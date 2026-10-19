@@ -41,7 +41,7 @@ def cargar():
     hist = pd.read_csv(path / "ordenes_historial.csv")
     hold = pd.read_csv(path / "ordenes_holdout.csv")
     exp = pd.read_csv(path / "experimento.csv")
-    clientes = pd.read_csv(d / "clientes.csv")
+    clientes = pd.read_csv(path / "clientes.csv")
     productos = list(catalogo["item"])
     M = (pd.crosstab(hist["customer_id"], hist["item"]) > 0).astype(int).reindex(
         index=clientes["customer_id"], columns=productos, fill_value=0)
