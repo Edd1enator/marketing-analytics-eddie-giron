@@ -1,8 +1,13 @@
 """
-Laboratorio de Recomendación — app de Streamlit (construida sobre streamlit_starter.py).
+Laboratorio de Recomendación
+
+El objetivo: una app donde alguien de negocio (que no sabe programar) pueda explorar sus recomendadores:
+elegir un cliente y un método, ver sus 3 recomendaciones con el "porque", y comparar los métodos
+(hit rate y cobertura) — con al menos un control interactivo.
 
 Correr con:  streamlit run streamlit_app.py
 """
+
 from pathlib import Path
 
 import numpy as np
