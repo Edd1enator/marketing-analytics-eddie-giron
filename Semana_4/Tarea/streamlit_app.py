@@ -169,13 +169,14 @@ with tab1:
     x_vec = X[fila].copy()
     comprados = [productos[j] for j in np.where(x_vec > 0)[0]]
     st.write("Ya compró:", comprados if comprados else "nada antes del corte")
-    
- # TODO 5: muestren las 3 recomendaciones con su puntaje y, para cada una, el "porque"
+
+    # TODO 5: muestren las 3 recomendaciones con su puntaje y, para cada una, el "porque"
     #         - por ítem: "porque compró X (similitud 0.87)"
     #         - por cliente: "N de sus K vecinos más parecidos lo compraron"
     #         - popularidad: "es de lo más comprado"
-    #         (y qué hacen con un cliente SIN historial: los métodos colaborativos dan puntaje 0)    metodo_usado = metodo
-
+    #         (y qué hacen con un cliente SIN historial: los métodos colaborativos dan puntaje 0)
+    
+    metodo_usado = metodo
     if x_vec.sum() == 0 and metodo != "Popularidad":
         st.warning("Este cliente no tiene historial: los métodos colaborativos dan puntaje 0. "
                    "Se usa Popularidad como respaldo (arranque en frío).")
